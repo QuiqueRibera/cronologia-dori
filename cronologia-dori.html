@@ -11,8 +11,8 @@
         body { margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; background: #fff; color: var(--text-color); overflow-x: hidden; overflow-y: auto; height: 100dvh; display: flex; flex-direction: column; }
         .timeline-stage { flex: 1; min-height: 0; position: relative; overflow: hidden; background: #000; width: 100%; display: flex; flex-direction: column; }
         
-        /* FIX: 130px altura en PC */
-        .timeline-nav { height: 130px; background: var(--bg-grey); border-top: 1px solid #ddd; position: relative; z-index: 20; user-select: none; flex-shrink: 0; }
+        /* FIX: 110px altura en PC */
+        .timeline-nav { height: 110px; background: var(--bg-grey); border-top: 1px solid #ddd; position: relative; z-index: 20; user-select: none; flex-shrink: 0; }
         
         .slides-wrapper { display: flex; transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1); height: 100%; width: 100%; }
         
@@ -23,10 +23,10 @@
         .media-col img { width: 100%; height: 100%; object-fit: contain; }
         .caption { position: absolute; bottom: 0; left: 0; right: 0; padding: 15px; background: linear-gradient(to top, rgba(0,0,0,0.8), transparent); color: white; font-size: 0.85rem; text-align: right; }
         
-        /* FIX: Padding lateral adequat i word-wrap per evitar talls */
+        /* FIX: Padding i word-wrap */
         .text-col { 
             flex: 1; 
-            padding: 40px 80px; 
+            padding: 20px 80px; 
             display: flex; 
             flex-direction: column; 
             justify-content: center; 
@@ -55,16 +55,15 @@
         .nav-container { width: 100%; height: 100%; overflow-x: auto; overflow-y: hidden; position: relative; scroll-behavior: smooth; cursor: grab; display: flex; align-items: center; }
         .nav-container::-webkit-scrollbar { height: 6px; background: transparent; }
         
-        /* FIX: Padding bottom major per evitar tall de dates (45px) */
-        .ruler-track { display: flex; align-items: flex-end; padding: 0 50vw; height: 100%; position: relative; min-width: max-content; padding-bottom: 45px; }
-        .ruler-line { position: absolute; left: 0; right: 0; bottom: 45px; height: 1px; background: #ccc; z-index: 0; width: 100%; }
+        /* FIX: Padding bottom en PC */
+        .ruler-track { display: flex; align-items: flex-end; padding: 0 50vw; height: 100%; position: relative; min-width: max-content; padding-bottom: 30px; }
+        .ruler-line { position: absolute; left: 0; right: 0; bottom: 30px; height: 1px; background: #ccc; z-index: 0; width: 100%; }
         
         .year-block { width: 600px; flex-shrink: 0; height: 100%; position: relative; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
         .year-tick { width: 1px; height: 10px; background: var(--tick-color); position: absolute; left: 0; bottom: 0; z-index: 1; }
         .year-block[data-decade="true"] .year-tick { height: 20px; background: #999; width: 2px; }
         
-        /* FIX: Posició any */
-        .year-label { position: absolute; bottom: -25px; left: 0; transform: translateX(-50%); font-size: 0.8rem; color: #888; font-weight: 600; font-family: monospace; }
+        .year-label { position: absolute; bottom: -22px; left: 0; transform: translateX(-50%); font-size: 0.8rem; color: #888; font-weight: 600; font-family: monospace; }
         
         .event-stem-container { position: absolute; bottom: 0; width: 1px; z-index: 5; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; }
         .event-stem-line { width: 1px; height: 100%; background-color: var(--brand-blue); opacity: 0.6; transition: opacity 0.3s; }
@@ -84,26 +83,28 @@
         
         @media (max-width: 900px) {
             .slide { flex-direction: column; }
-            .media-col { flex: 0 0 25vh; height: 25vh; width: 100%; min-height: 200px; }
+            /* FIX: Imatge reduïda al 28% */
+            .media-col { flex: 0 0 28vh; height: 28vh; width: 100%; min-height: 180px; }
             .media-col img { object-fit: cover; }
             
-            /* FIX: Padding lateral major en mòbil */
-            .text-col { flex: 1; width: 100%; padding: 25px 20px 100px 20px; border-top: 4px solid var(--brand-blue); overflow-y: auto; }
-            .slide.no-media .text-col { padding: 40px 20px; }
+            /* FIX: Padding text i font size */
+            .text-col { flex: 1; width: 100%; padding: 20px 25px 20px 25px; border-top: 4px solid var(--brand-blue); overflow-y: auto; }
+            .slide.no-media .text-col { padding: 40px 25px; }
             
-            h2 { font-size: 1.6rem; }
-            p { font-size: 1rem; }
+            h2 { font-size: 1.5rem; margin-bottom: 12px; }
+            p { font-size: 0.95rem; margin-bottom: 15px; }
             
-            /* FIX: Més espai per a les dates a baix en mòbil */
-            .timeline-nav { height: 145px; }
-            .year-block { width: 300px; height: 75px; }
-            .ruler-track { padding-bottom: 40px; }
-            .ruler-line { bottom: 40px; }
-            .year-label { bottom: -25px; font-size: 0.75rem; }
+            /* FIX: Timeline compacta de 110px */
+            .timeline-nav { height: 110px; }
+            .year-block { width: 300px; height: 60px; }
+            .ruler-track { padding-bottom: 35px; } /* Espai per a dates */
+            .ruler-line { bottom: 35px; }
+            .year-label { bottom: -20px; font-size: 0.75rem; }
             .event-stem-container { bottom: 0; }
-            .start-marker { padding-bottom: 15px; }
+            .start-marker { padding-bottom: 10px; }
             
-            .float-btn { top: 12.5vh; bottom: auto; transform: translateY(-50%); width: 40px; height: 40px; background: rgba(255,255,255,0.95); border: 1px solid #ddd; }
+            /* Fletxes damunt de la imatge */
+            .float-btn { top: 14vh; bottom: auto; transform: translateY(-50%); width: 40px; height: 40px; background: rgba(255,255,255,0.95); border: 1px solid #ddd; }
             .prev-slide { left: 10px; }
             .next-slide { right: 10px; }
         }
