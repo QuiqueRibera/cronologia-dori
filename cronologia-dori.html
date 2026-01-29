@@ -5,11 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dori: cronologia d'un assassinat</title>
     <style>
+        /* FIX: Box-sizing global per evitar desbordaments */
+        * { box-sizing: border-box; }
         :root { --brand-blue: #5fb4e4; --brand-black: #1a1a1a; --text-color: #333; --bg-grey: #f4f4f4; --tick-color: #d1d5db; }
-        /* FIX: Altura dinâmica i scroll natiu */
         body { margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; background: #fff; color: var(--text-color); overflow-x: hidden; overflow-y: auto; height: 100dvh; display: flex; flex-direction: column; }
         .timeline-stage { flex: 1; min-height: 0; position: relative; overflow: hidden; background: #000; width: 100%; display: flex; flex-direction: column; }
-        .timeline-nav { height: 220px; background: var(--bg-grey); border-top: 1px solid #ddd; position: relative; z-index: 20; user-select: none; flex-shrink: 0; }
+        
+        /* FIX: 130px altura en PC */
+        .timeline-nav { height: 130px; background: var(--bg-grey); border-top: 1px solid #ddd; position: relative; z-index: 20; user-select: none; flex-shrink: 0; }
+        
         .slides-wrapper { display: flex; transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1); height: 100%; width: 100%; }
         
         .slide { min-width: 100%; height: 100%; display: flex; flex-direction: row; background: white; }
@@ -19,39 +23,58 @@
         .media-col img { width: 100%; height: 100%; object-fit: contain; }
         .caption { position: absolute; bottom: 0; left: 0; right: 0; padding: 15px; background: linear-gradient(to top, rgba(0,0,0,0.8), transparent); color: white; font-size: 0.85rem; text-align: right; }
         
-        /* FIX: Padding augmentat per a evitar fletxes en PC */
-        .text-col { flex: 1; padding: 40px 100px; display: flex; flex-direction: column; justify-content: center; overflow-y: auto; background: white; -webkit-overflow-scrolling: touch; }
-        .slide.no-media .text-col { flex: 0 1 900px; text-align: center; border: none; padding: 40px 100px; } 
+        /* FIX: Padding lateral adequat i word-wrap per evitar talls */
+        .text-col { 
+            flex: 1; 
+            padding: 40px 80px; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
+            overflow-y: auto; 
+            background: white; 
+            -webkit-overflow-scrolling: touch; 
+            min-width: 0; 
+            overflow-wrap: break-word; 
+            word-wrap: break-word; 
+            word-break: normal; 
+            hyphens: auto;
+        }
+        .slide.no-media .text-col { flex: 0 1 900px; text-align: center; border: none; padding: 40px 80px; } 
         .slide.no-media .date-badge { align-self: center; } 
 
         .date-badge { display: inline-block; background: var(--brand-black); color: var(--brand-blue); padding: 5px 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 25px; font-size: 0.9rem; align-self: flex-start; border-radius: 2px; }
-        h2 { font-size: 2.5rem; line-height: 1.1; margin: 0 0 20px 0; color: var(--brand-black); font-weight: 700; }
-        p { font-size: 1.1rem; line-height: 1.6; color: #555; max-width: 600px; margin: 0 auto; margin-bottom: 20px; }
+        h2 { font-size: 2.5rem; line-height: 1.1; margin: 0 0 20px 0; color: var(--brand-black); font-weight: 700; overflow-wrap: break-word; word-wrap: break-word; word-break: normal; }
+        p { font-size: 1.1rem; line-height: 1.6; color: #555; max-width: 100%; margin: 0 auto; margin-bottom: 20px; overflow-wrap: break-word; word-wrap: break-word; word-break: normal; }
         .slide:not(.no-media) p { margin: 0 0 20px 0; }
 
-        .links-container { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 10px; }
+        .links-container { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 10px; max-width: 100%; }
         .slide.no-media .links-container { justify-content: center; }
-        .slide-link { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border: 1px solid var(--brand-blue); color: var(--brand-blue); text-decoration: none; border-radius: 4px; font-weight: 600; font-size: 0.9rem; transition: all 0.2s; }
+        .slide-link { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border: 1px solid var(--brand-blue); color: var(--brand-blue); text-decoration: none; border-radius: 4px; font-weight: 600; font-size: 0.9rem; transition: all 0.2s; white-space: normal; max-width: 100%; overflow-wrap: break-word; word-break: break-word; text-align: left; }
         .slide-link:hover { background: var(--brand-blue); color: white; }
 
         .nav-container { width: 100%; height: 100%; overflow-x: auto; overflow-y: hidden; position: relative; scroll-behavior: smooth; cursor: grab; display: flex; align-items: center; }
         .nav-container::-webkit-scrollbar { height: 6px; background: transparent; }
-        .ruler-track { display: flex; align-items: flex-end; padding: 0 50vw; height: 100%; position: relative; min-width: max-content; padding-bottom: 50px; }
-        /* FIX: Línia més fina */
-        .ruler-line { position: absolute; left: 0; right: 0; bottom: 50px; height: 1px; background: #ccc; z-index: 0; width: 100%; }
         
-        .year-block { width: 600px; flex-shrink: 0; height: 120px; position: relative; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
-        .year-tick { width: 1px; height: 15px; background: var(--tick-color); position: absolute; left: 0; bottom: 0; z-index: 1; }
-        .year-block[data-decade="true"] .year-tick { height: 25px; background: #999; width: 2px; }
-        .year-label { position: absolute; bottom: -30px; left: 0; transform: translateX(-50%); font-size: 0.85rem; color: #888; font-weight: 600; font-family: monospace; }
+        /* FIX: Padding bottom major per evitar tall de dates (45px) */
+        .ruler-track { display: flex; align-items: flex-end; padding: 0 50vw; height: 100%; position: relative; min-width: max-content; padding-bottom: 45px; }
+        .ruler-line { position: absolute; left: 0; right: 0; bottom: 45px; height: 1px; background: #ccc; z-index: 0; width: 100%; }
+        
+        .year-block { width: 600px; flex-shrink: 0; height: 100%; position: relative; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
+        .year-tick { width: 1px; height: 10px; background: var(--tick-color); position: absolute; left: 0; bottom: 0; z-index: 1; }
+        .year-block[data-decade="true"] .year-tick { height: 20px; background: #999; width: 2px; }
+        
+        /* FIX: Posició any */
+        .year-label { position: absolute; bottom: -25px; left: 0; transform: translateX(-50%); font-size: 0.8rem; color: #888; font-weight: 600; font-family: monospace; }
+        
         .event-stem-container { position: absolute; bottom: 0; width: 1px; z-index: 5; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; }
         .event-stem-line { width: 1px; height: 100%; background-color: var(--brand-blue); opacity: 0.6; transition: opacity 0.3s; }
-        .event-marker { width: 14px; height: 14px; background: var(--brand-blue); border: 2px solid white; border-radius: 50%; cursor: pointer; transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow: 0 2px 4px rgba(0,0,0,0.15); position: absolute; top: 0; transform: translate(0, -50%); }
+        .event-marker { width: 12px; height: 12px; background: var(--brand-blue); border: 2px solid white; border-radius: 50%; cursor: pointer; transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow: 0 2px 4px rgba(0,0,0,0.15); position: absolute; top: 0; transform: translate(0, -50%); }
         .event-stem-container:hover { z-index: 30; } .event-stem-container:hover .event-stem-line { opacity: 1; background-color: var(--brand-black); width: 2px; } .event-stem-container:hover .event-marker { transform: translate(0, -50%) scale(1.3); background: var(--brand-black); border-color: var(--brand-blue); }
         .event-stem-container.active { z-index: 20; } .event-stem-container.active .event-stem-line { opacity: 1; background-color: var(--brand-black); width: 2px; } .event-stem-container.active .event-marker { transform: translate(0, -50%) scale(1.5); background: var(--brand-black); border-color: var(--brand-blue); box-shadow: 0 6px 12px rgba(0,0,0,0.2); }
         .event-tooltip { position: absolute; top: -35px; left: 50%; transform: translateX(-50%); background: var(--brand-black); color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.2); font-weight: bold; }
         .event-stem-container:hover .event-tooltip, .event-stem-container.active .event-tooltip { opacity: 1; top: -40px; }
-        .start-marker { height: 120px; display: flex; align-items: flex-end; margin-right: 0px; position: relative; z-index: 10; padding-bottom: 20px; }
+        
+        .start-marker { height: 100%; display: flex; align-items: flex-end; margin-right: 0px; position: relative; z-index: 10; padding-bottom: 20px; }
         .start-flag { background: #666; color: white; padding: 4px 10px; font-size: 0.75rem; font-weight: bold; border-radius: 20px; cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .start-marker.active .start-flag { background: var(--brand-blue); transform: scale(1.1); box-shadow: 0 6px 12px rgba(59, 130, 246, 0.3); }
         
@@ -61,28 +84,28 @@
         
         @media (max-width: 900px) {
             .slide { flex-direction: column; }
-            .media-col { flex: none; height: 40%; width: 100%; min-height: 250px; }
+            .media-col { flex: 0 0 25vh; height: 25vh; width: 100%; min-height: 200px; }
             .media-col img { object-fit: cover; }
             
-            /* FIX: Padding inferior per a protegir el text de les fletxes flotants */
-            .text-col { flex: 1; width: 100%; padding: 30px 20px 100px 20px; border-top: 4px solid var(--brand-blue); overflow-y: auto; }
+            /* FIX: Padding lateral major en mòbil */
+            .text-col { flex: 1; width: 100%; padding: 25px 20px 100px 20px; border-top: 4px solid var(--brand-blue); overflow-y: auto; }
             .slide.no-media .text-col { padding: 40px 20px; }
             
             h2 { font-size: 1.6rem; }
             p { font-size: 1rem; }
             
-            /* FIX: Alçada i posició dates */
-            .timeline-nav { height: 160px; }
-            .year-block { width: 300px; height: 90px; }
-            .ruler-track { padding-bottom: 30px; }
-            .ruler-line { bottom: 30px; }
-            .year-label { bottom: -25px; font-size: 0.7rem; }
+            /* FIX: Més espai per a les dates a baix en mòbil */
+            .timeline-nav { height: 145px; }
+            .year-block { width: 300px; height: 75px; }
+            .ruler-track { padding-bottom: 40px; }
+            .ruler-line { bottom: 40px; }
+            .year-label { bottom: -25px; font-size: 0.75rem; }
             .event-stem-container { bottom: 0; }
-            .start-marker { height: 90px; padding-bottom: 10px; }
+            .start-marker { padding-bottom: 15px; }
             
-            .float-btn { top: auto; bottom: 150px; transform: none; width: 40px; height: 40px; background: rgba(255,255,255,0.95); border: 1px solid #ddd; }
-            .prev-slide { left: 15px; }
-            .next-slide { right: 15px; }
+            .float-btn { top: 12.5vh; bottom: auto; transform: translateY(-50%); width: 40px; height: 40px; background: rgba(255,255,255,0.95); border: 1px solid #ddd; }
+            .prev-slide { left: 10px; }
+            .next-slide { right: 10px; }
         }
     </style>
 </head>
@@ -166,7 +189,7 @@ Alcoi condemna amb silenci i aplaudiments l’assassinat masclista | https://www
         block.innerHTML = `<div class="year-tick"></div><div class="year-label">${y}</div>`;
         const evsInYear = eventsWithYear.filter(e => e.year === y);
         evsInYear.sort((a, b) => calculatePosition(a.date) - calculatePosition(b.date));
-        const heightPattern = [100, 70, 40];
+        const heightPattern = [45, 30, 15];
 
         evsInYear.forEach((ev, localIndex) => {
             const container = document.createElement('div');
