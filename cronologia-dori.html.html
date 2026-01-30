@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dori: cronologia d'un assassinat</title>
+    <style>
+        * { box-sizing: border-box; }
+        :root { --brand-blue: #5fb4e4; --brand-black: #1a1a1a; --text-color: #333; --bg-grey: #f4f4f4; --tick-color: #d1d5db; }
+        body { margin: 0; font-family: "Helvetica Neue", Arial, sans-serif; background: #fff; color: var(--text-color); overflow-x: hidden; overflow-y: auto; height: 100dvh; display: flex; flex-direction: column; }
+        .timeline-stage { flex: 1; min-height: 0; position: relative; overflow: hidden; background: #000; width: 100%; display: flex; flex-direction: column; }
+        .timeline-nav { height: 140px; background: var(--bg-grey); border-top: 1px solid #ddd; position: relative; z-index: 20; user-select: none; flex-shrink: 0; padding-top: 15px; }
+        .slides-wrapper { display: flex; transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1); height: 100%; width: 100%; }
+        .slide { min-width: 100%; height: 100%; display: flex; flex-direction: row; background: white; }
+        .slide.no-media { justify-content: center; align-items: center; }
+        .media-col { flex: 1.5; background: #111; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .media-col img { width: 100%; height: 100%; object-fit: contain; }
+        .caption { position: absolute; bottom: 0; left: 0; right: 0; padding: 15px; background: linear-gradient(to top, rgba(0,0,0,0.8), transparent); color: white; font-size: 0.85rem; text-align: right; }
+        .text-col { flex: 1; padding: 5px 80px; display: flex; flex-direction: column; overflow-y: auto; background: white; -webkit-overflow-scrolling: touch; min-width: 0; overflow-wrap: break-word; word-wrap: break-word; word-break: normal; hyphens: auto; }
+        .text-col-inner { margin: auto 0; width: 100%; }
+        .slide.no-media .text-col { flex: 0 1 100%; text-align: center; border: none; padding: 40px 80px; justify-content: center; }
+        .slide.no-media .date-badge { align-self: center; }
+        .date-badge { display: inline-block; background: var(--brand-black); color: var(--brand-blue); padding: 5px 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 25px; font-size: 0.9rem; align-self: flex-start; border-radius: 2px; }
+        h2 { font-size: 2.5rem; line-height: 1.1; margin: 0 0 20px 0; color: var(--brand-black); font-weight: 700; overflow-wrap: break-word; word-wrap: break-word; word-break: normal; }
+        p { font-size: 1.1rem; line-height: 1.6; color: #555; max-width: 100%; margin: 0 auto; margin-bottom: 20px; overflow-wrap: break-word; word-wrap: break-word; word-break: normal; }
+        .slide:not(.no-media) p { margin: 0 0 20px 0; }
+        .links-container { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 10px; max-width: 100%; }
+        .slide.no-media .links-container { justify-content: center; }
+        .slide-link { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border: 1px solid var(--brand-blue); color: var(--brand-blue); text-decoration: none; border-radius: 4px; font-weight: 600; font-size: 0.85rem; transition: all 0.2s; white-space: normal; max-width: 100%; overflow-wrap: break-word; word-break: break-word; text-align: left; }
+        .slide-link:hover { background: var(--brand-blue); color: white; }
+        .nav-container { width: 100%; height: 100%; overflow-x: auto; overflow-y: hidden; position: relative; scroll-behavior: smooth; cursor: grab; display: flex; align-items: center; }
+        .nav-container::-webkit-scrollbar { height: 6px; background: transparent; }
+        .ruler-track { display: flex; align-items: flex-end; padding: 0 50vw; height: 100%; position: relative; min-width: max-content; padding-bottom: 30px; }
+        .ruler-line { position: absolute; left: 0; right: 0; bottom: 30px; height: 1px; background: #ccc; z-index: 0; width: 100%; }
+        .year-block { width: 600px; flex-shrink: 0; height: 100%; position: relative; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
+        .year-tick { width: 1px; height: 10px; background: var(--tick-color); position: absolute; left: 0; bottom: 0; z-index: 1; }
+        .year-block[data-decade="true"] .year-tick { height: 20px; background: #999; width: 2px; }
+        .year-label { position: absolute; bottom: -22px; left: 0; transform: translateX(-50%); font-size: 0.8rem; color: #888; font-weight: 600; font-family: monospace; }
+        .event-stem-container { position: absolute; bottom: 0; width: 1px; z-index: 5; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; height: 90px; }
+        .event-stem-line { width: 1px; height: 100%; background-color: var(--brand-blue); opacity: 0.6; transition: opacity 0.3s; position: absolute; bottom: 0; }
+        .event-marker { width: 12px; height: 12px; background: var(--brand-blue); border: 2px solid white; border-radius: 50%; cursor: pointer; transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow: 0 2px 4px rgba(0,0,0,0.15); position: absolute; transform: translate(0, 50%); bottom: 0; }
+        .event-stem-container:hover { z-index: 30; } .event-stem-container:hover .event-stem-line { opacity: 1; background-color: var(--brand-black); width: 2px; } .event-stem-container:hover .event-marker { transform: translate(0, 50%) scale(1.3); background: var(--brand-black); border-color: var(--brand-blue); } .event-stem-container:hover .event-tooltip { opacity: 1; }
+        .event-stem-container.active { z-index: 20; } .event-stem-container.active .event-stem-line { opacity: 1; background-color: var(--brand-black); width: 2px; } .event-stem-container.active .event-marker { transform: translate(0, 50%) scale(1.5); background: var(--brand-black); border-color: var(--brand-blue); box-shadow: 0 6px 12px rgba(0,0,0,0.2); } .event-stem-container.active .event-tooltip { opacity: 1; }
+        .event-tooltip { position: absolute; top: 0; left: 50%; transform: translateX(-50%); background: var(--brand-black); color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.2); font-weight: bold; }
+        .float-btn { position: absolute; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; background: white; border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.2); z-index: 30; border: none; cursor: pointer; color: var(--brand-blue); font-size: 20px; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
+        .float-btn:hover { background: var(--brand-blue); color: white; }
+        .prev-slide { left: 20px; } .next-slide { right: 20px; }
+        @media (max-width: 900px) {
+            .slide { flex-direction: column; }
+            .media-col { flex: 0 0 28vh; height: 28vh; width: 100%; min-height: 180px; }
+            .media-col img { object-fit: cover; }
+            .text-col { flex: 1; width: 100%; padding: 10px 60px 10px 60px; border-top: 4px solid var(--brand-blue); overflow-y: auto; display: block; }
+            .text-col-inner { margin: auto 0; min-height: 100%; display: flex; flex-direction: column; justify-content: center; }
+            .slide.no-media .text-col { padding: 40px 60px; }
+            h2 { font-size: 1.15rem; margin-bottom: 12px; }
+            p { font-size: 0.85rem; margin-bottom: 15px; }
+            .timeline-nav { height: 145px; }
+            .year-block { width: 300px; height: 75px; }
+            .ruler-track { padding-bottom: 35px; }
+            .ruler-line { bottom: 35px; }
+            .year-label { bottom: -20px; font-size: 0.75rem; }
+            .event-stem-container { bottom: 0; }
+            .float-btn { top: 50%; transform: translateY(-50%); }
+            .prev-slide { left: 10px; }
+            .next-slide { right: 10px; }
+        }
+    </style>
+</head>
+<body>
+<div class="timeline-stage">
+    <div class="slides-wrapper" id="slider">
+        <div class="slide  active">
+            <div class="media-col"><img src="https://www.aramultimedia.com/thumb.php?src=/upload/arxiu/images/2022-octubre/Captura-de-pantalla-2022-10-23-a-las-18-45-28.png&w=800&zc=2&a=c" alt="Portada"><div class="caption"></div></div>
+            <div class="text-col"><div class="text-col-inner"><div class="date-badge">2022</div><h2>Dori: cronologia d'un assassinat</h2><p></p></div></div>
+        </div>
+        <div class="slide no-media"><div class="text-col" style="justify-content: center;"><div class="text-col-inner"><div class="date-badge">23/10/2022</div><h2>Matinada del 23 d’octubre del 2022</h2><p>Els agents troben Dori, 27 anys, amb diverses ganivetades en la seua vivenda de la Zona Nord d’Alcoi. La seua parella, 29 anys, s’ha llançat pel pati de llums des del cinqué pis i està en l’Hospital en estat crític. Encara no se sap que ha passat. </p><div class="links-container"><a href="https://www.aramultimedia.com/ca/pendents-de-la-investigacio-i-de-lestat-de-salut-de-lhome-per-a-aclarir-la-mort-de-la-seua-parella-a-alcoi" target="_blank" class="slide-link">Pendents de la investigació i de l'estat de salut de l'home per a aclarir la mort de la seua parella a Alcoi <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></a></div></div></div></div>
+        <div class="slide "><div class="media-col"><img src="https://www.aramultimedia.com/thumb.php?src=/upload/arxiu/images/2022-octubre/Alcoi-violencia.jpeg&w=800&zc=2&a=c" alt="24 d’octubre del 2022"><div class="caption"></div></div><div class="text-col"><div class="text-col-inner"><div class="date-badge">24/10/2022</div><h2>24 d’octubre del 2022</h2><p>L’Ajuntament d’Alcoi declara dos dies de dol oficial i convoca una concentració silenciosa de vesprada, a la que acudeix molta gent. En l’àmbit policial encara es treballa en la hipòtesi de l’assassinat masclista, però popularment es dona per fet. 
+</p><div class="links-container"><a href="https://www.aramultimedia.com/ca/convocada-concentracio-en-repulsa-per-lassassinat-masclista-a-alcoi" target="_blank" class="slide-link">Convocada concentració en repulsa per l'assassinat masclista a Alcoi <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></a><a href="https://www.aramultimedia.com/ca/alcoi-condemna-amb-silenci-i-aplaudiments-lassassinat-masclista" target="_blank" class="slide-link">Alcoi condemna amb silenci i aplaudiments l’assassinat masclista <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></a></div></div></div></div>
+        <div class="slide "><div class="media-col"><img src="https://www.aramultimedia.com/upload/arxiu/images/2022-octubre/concentracio-per-assassinat-masclista-a-alcoi-imatge-ajuntament.jpg" alt="25 d’octubre del 2022"><div class="caption">Imatge de l'Ajuntament d'Alcoi.</div></div><div class="text-col"><div class="text-col-inner"><div class="date-badge">25/10/2022</div><h2>25 d’octubre del 2022</h2><p>Continurn les concentracions a València i altres municipis en repulsa a l’assassinat de Dori. La Policia mentrestant continua interrogant el cercle més directe de la víctima o arreplegant proves.</p><div class="links-container"><a href="https://www.aramultimedia.com/ca/continuen-les-concentracions-silencioses-en-repulsa-pel-crim-masclista-dalcoi" target="_blank" class="slide-link">Continuen les concentracions silencioses en repulsa pel crim masclista d'Alcoi <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></a></div></div></div></div>
+        <div class="slide no-media"><div class="text-col" style="justify-content: center;"><div class="text-col-inner"><div class="date-badge">26/10/2022</div><h2>26 d’octubre del 2022</h2><p>El pressumpte autor dels fets, la parella de Dori, continua ingressat en l’Hospital recuperant-se de les ferides. Tot i que encara no hi ha confirmació oficial, les proves comencen a apuntar a que l’home va agredir la seua parella abans de llançar-se al buit. </p><div class="links-container"><a href="https://www.aramultimedia.com/ca/el-presumpte-assassi-de-la-zona-nord-pateix-un-pneumotorax-i-te-la-cama-dreta-destrossada" target="_blank" class="slide-link">El presumpte assassí de la Zona Nord pateix un pneumotòrax i té la cama dreta destrossada <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></a></div></div></div></div>
+        <div class="slide no-media"><div class="text-col" style="justify-content: center;"><div class="text-col-inner"><div class="date-badge">27/10/2022</div><h2>27 d’octubre del 2022</h2><p>El suposat autor continua ingressat i la detenció es prorroga fins que estiga en condicions de declarar </p><div class="links-container"><a href="https://www.aramultimedia.com/ca/el-presumpte-assassi-masclista-dalcoi-continuara-detingut-a-lespera-que-el-seu-estat-de-salut-li-permeta-declarar" target="_blank" class="slide-link">El presumpte assassí masclista d’Alcoi continuarà detingut a l'espera que el seu estat de salut li permeta declarar <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></a></div></div></div></div>
+        <div class="slide "><div class="media-col"><img src="https://www.aramultimedia.com/thumb.php?src=/upload/arxiu/images/2020-marc-abril/Alcoi/hospital-verge-lliris-sanitat.png&w=800&zc=2&a=c" alt="28 d’octubre del 2022"><div class="caption"></div></div><div class="text-col"><div class="text-col-inner"><div class="date-badge">28/10/2022</div><h2>28 d’octubre del 2022</h2><p>Encara no està en condicions de declarar, però la investigació policial fa que la jutgessa ja declare l’ingrés en presó comunicada i sense fiança.</p><div class="links-container"><a href="https://www.aramultimedia.com/ca/preso-provisional-per-al-presumpte-assassi-masclista-dalcoi-tot-i-que-no-pot-ser-traslladat-pel-seu-estat-de-salut" target="_blank" class="slide-link">Presó provisional per al presumpte assassí masclista d'Alcoi, tot i que no pot ser traslladat pel seu estat de salut <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></a></div></div></div></div>
+        <div class="slide no-media"><div class="text-col" style="justify-content: center;"><div class="text-col-inner"><div class="date-badge">2/11/2022</div><h2>2 de novembre del 2022</h2><p>Trascendeix que Dori, abans dels fets, va enviar uns audios a una amiga alertant de la mala situació en la que estava en la seua parella. Són una de les proves més importants de la investigació judicial. </p><div class="links-container"><a href="https://www.aramultimedia.com/ca/els-audios-de-whatsapp-de-dori-a-una-amiga-fonamentals-per-a-aclarir-el-presumpte-crim-de-la-zona-nord" target="_blank" class="slide-link">Els àudios de Whatsapp de Dori a una amiga, fonamentals per a aclarir el presumpte crim de la Zona Nord <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></a></div></div></div></div>
+        <div class="slide no-media"><div class="text-col" style="justify-content: center;"><div class="text-col-inner"><div class="date-badge">14/11/2022</div><h2>14 de novembre del 2022</h2><p>L’autor del crim deixa l’Hospital i ingressa en un modul hospitalari a Picassent, a espera de juí. </p><div class="links-container"><a href="https://www.aramultimedia.com/ca/el-presumpte-assassi-de-dori-deixa-lhospital-i-ingressa-en-preso" target="_blank" class="slide-link">El presumpte assassí de Dori deixa l'Hospital i ingressa en presó <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></a></div></div></div></div>
+        <div class="slide no-media"><div class="text-col" style="justify-content: center;"><div class="text-col-inner"><div class="date-badge">23/11/2022</div><h2>23 de novembre del 2022</h2><p>L’assassinat de Dori fa que més dones a Alcoi reclamen assistència. ACOVIFA, l’associació alcoiana que treballa en víctimes de violència de gènere, duplica les altencions. </p><div class="links-container"><a href="https://www.aramultimedia.com/ca/les-atencions-a-dones-en-acovifa-es-dupliquen-despres-del-assassinat-de-dori-el-passat-mes-doctubre" target="_blank" class="slide-link">Les atencions a dones en ACOVIFA es dupliquen després de l'assassinat de Dori el passat mes d’octubre <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></a></div></div></div></div>
+        <div class="slide no-media"><div class="text-col" style="justify-content: center;"><div class="text-col-inner"><div class="date-badge">25/11/2022</div><h2>25 de novembre del 2022</h2><p>El Dia contra la Violència de Gènere se celebra de manera emotiva a Alcoi. </p><div class="links-container"><a href="https://www.aramultimedia.com/ca/38-dones-dins-de-sudaris-al-mig-de-la-plaa-despanya-condemnen-els-assassinats-en-el-dia-contra-la-violncia-de-gnere" target="_blank" class="slide-link">38 dones dins de sudaris al mig de la Plaça d’Espanya condemnen els assassinats en el Dia contra la Violència de Gènere <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></a></div></div></div></div>
+        <div class="slide "><div class="media-col"><img src="https://www.aramultimedia.com/upload/arxiu/images/2023-marc/8m/IMG_20230308_195916_164.jpg" alt="8 de març del 2023"><div class="caption"></div></div><div class="text-col"><div class="text-col-inner"><div class="date-badge">8/3/2023</div><h2>8 de març del 2023</h2><p>El mateix passa el Dia de la Dona, Alcoi pren el carrer de manera intensa. També assiteix el president de la Generalitat en eixe moment, Ximo Puig, per ser Alcoi la ciutat valenciana on s’ha registrat l’últim assassinat masclista, fa ja cinc mesos. </p><div class="links-container"><a href="https://www.aramultimedia.com/ca/alcoi-pren-el-carrer-en-el-dia-de-la-dona" target="_blank" class="slide-link">Alcoi pren el carrer en el Dia de la Dona <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></a></div></div></div></div>
+        <div class="slide no-media"><div class="text-col" style="justify-content: center;"><div class="text-col-inner"><div class="date-badge">2023-2025</div><h2>2023-2025: fase d’instrucció abans del juí. </h2><p></p></div></div></div>
+        <div class="slide no-media"><div class="text-col" style="justify-content: center;"><div class="text-col-inner"><div class="date-badge">13/1/2026</div><h2>13 de gener del 2026</h2><p>Comença el jui a l’Audiència d’Alacant. La fiscalia demana entre 23 i 25 anys de presó. L’acusat s’acolleix al dret de no declarar i afirma que pateix amnesia. </p><div class="links-container"><a href="https://www.aramultimedia.com/ca/comenca-el-judici-per-lassassinat-a-punyalades-duna-jove-a-alcoi-en-2022" target="_blank" class="slide-link">Comença el judici per l’assassinat a punyalades d’una jove a Alcoi en 2022 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></a></div></div></div></div>
+        <div class="slide no-media"><div class="text-col" style="justify-content: center;"><div class="text-col-inner"><div class="date-badge">20/1/2026</div><h2>20 de gener del 2026</h2><p>Acaba la celebració del juí i el Fiscal manté la petició de pena de 25 anys de presó. Comença la deliberació del jurat popular. </p><div class="links-container"><a href="https://www.aramultimedia.com/ca/fiscalia-reclama-25-anys-de-preso-per-al-presumpte-assassi-de-dori" target="_blank" class="slide-link">Fiscalia reclama 25 anys de presó per al presumpte assassí de Dori <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></a></div></div></div></div>
+        <div class="slide "><div class="media-col"><img src="https://www.aramultimedia.com/thumb.php?src=/upload/arxiu/images/2020-marc-abril/Alcoi/audiencia-provincial-alacant.png&w=800&zc=2&a=c" alt="21 de gener del 2026"><div class="caption"></div></div><div class="text-col"><div class="text-col-inner"><div class="date-badge">21/1/2026</div><h2>21 de gener del 2026</h2><p>El jurat popular considera culpable a l’autor de la mort de Dori. El juí queda vist per a sentència i quedem pendents de l’última decisió del jutge.</p><div class="links-container"><a href="https://www.aramultimedia.com/ca/el-jurat-popular-declara-culpable-lacusat-dassassinar-dori-a-alcoi-el-2022" target="_blank" class="slide-link">El jurat popular declara culpable l'acusat d'assassinar Dori a Alcoi el 2022 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></a></div></div></div></div>
+    </div>
+    <button class="float-btn prev-slide" id="btnPrev"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <button class="float-btn next-slide" id="btnNext"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button>
+</div>
+<div class="timeline-nav">
+    <div class="nav-container" id="navContainer">
+        <div class="ruler-track" id="rulerTrack">
+            <div class="ruler-line"></div>
+        </div>
+    </div>
+</div>
+<script>
+    const rawEvents = [{"id":1,"date":"23/10/2022","headline":"Matinada del 23 d’octubre del 2022","text":"Els agents troben Dori, 27 anys, amb diverses ganivetades en la seua vivenda de la Zona Nord d’Alcoi. La seua parella, 29 anys, s’ha llançat pel pati de llums des del cinqué pis i està en l’Hospital en estat crític. Encara no se sap que ha passat. ","media":"","caption":"","links":"Pendents de la investigació i de l'estat de salut de l'home per a aclarir la mort de la seua parella a Alcoi | https://www.aramultimedia.com/ca/pendents-de-la-investigacio-i-de-lestat-de-salut-de-lhome-per-a-aclarir-la-mort-de-la-seua-parella-a-alcoi"},{"id":2,"date":"24/10/2022","headline":"24 d’octubre del 2022","text":"L’Ajuntament d’Alcoi declara dos dies de dol oficial i convoca una concentració silenciosa de vesprada, a la que acudeix molta gent. En l’àmbit policial encara es treballa en la hipòtesi de l’assassinat masclista, però popularment es dona per fet. \n","media":"https://www.aramultimedia.com/thumb.php?src=/upload/arxiu/images/2022-octubre/Alcoi-violencia.jpeg&w=800&zc=2&a=c","caption":"","links":"Convocada concentració en repulsa per l'assassinat masclista a Alcoi | https://www.aramultimedia.com/ca/convocada-concentracio-en-repulsa-per-lassassinat-masclista-a-alcoi\n\nAlcoi condemna amb silenci i aplaudiments l’assassinat masclista | https://www.aramultimedia.com/ca/alcoi-condemna-amb-silenci-i-aplaudiments-lassassinat-masclista\n"},{"id":1769626653284,"date":"25/10/2022","headline":"25 d’octubre del 2022","text":"Continurn les concentracions a València i altres municipis en repulsa a l’assassinat de Dori. La Policia mentrestant continua interrogant el cercle més directe de la víctima o arreplegant proves.","media":"https://www.aramultimedia.com/upload/arxiu/images/2022-octubre/concentracio-per-assassinat-masclista-a-alcoi-imatge-ajuntament.jpg","caption":"Imatge de l'Ajuntament d'Alcoi.","links":"Continuen les concentracions silencioses en repulsa pel crim masclista d'Alcoi | https://www.aramultimedia.com/ca/continuen-les-concentracions-silencioses-en-repulsa-pel-crim-masclista-dalcoi\n"},{"id":1769626667938,"date":"26/10/2022","headline":"26 d’octubre del 2022","text":"El pressumpte autor dels fets, la parella de Dori, continua ingressat en l’Hospital recuperant-se de les ferides. Tot i que encara no hi ha confirmació oficial, les proves comencen a apuntar a que l’home va agredir la seua parella abans de llançar-se al buit. ","media":"","caption":"","links":"El presumpte assassí de la Zona Nord pateix un pneumotòrax i té la cama dreta destrossada | https://www.aramultimedia.com/ca/el-presumpte-assassi-de-la-zona-nord-pateix-un-pneumotorax-i-te-la-cama-dreta-destrossada"},{"id":1769626680818,"date":"27/10/2022","headline":"27 d’octubre del 2022","text":"El suposat autor continua ingressat i la detenció es prorroga fins que estiga en condicions de declarar ","media":"","caption":"","links":"El presumpte assassí masclista d’Alcoi continuarà detingut a l'espera que el seu estat de salut li permeta declarar | https://www.aramultimedia.com/ca/el-presumpte-assassi-masclista-dalcoi-continuara-detingut-a-lespera-que-el-seu-estat-de-salut-li-permeta-declarar"},{"id":1769626694338,"date":"28/10/2022","headline":"28 d’octubre del 2022","text":"Encara no està en condicions de declarar, però la investigació policial fa que la jutgessa ja declare l’ingrés en presó comunicada i sense fiança.","media":"https://www.aramultimedia.com/thumb.php?src=/upload/arxiu/images/2020-marc-abril/Alcoi/hospital-verge-lliris-sanitat.png&w=800&zc=2&a=c","caption":"","links":"Presó provisional per al presumpte assassí masclista d'Alcoi, tot i que no pot ser traslladat pel seu estat de salut | https://www.aramultimedia.com/ca/preso-provisional-per-al-presumpte-assassi-masclista-dalcoi-tot-i-que-no-pot-ser-traslladat-pel-seu-estat-de-salut"},{"id":1769626709343,"date":"2/11/2022","headline":"2 de novembre del 2022","text":"Trascendeix que Dori, abans dels fets, va enviar uns audios a una amiga alertant de la mala situació en la que estava en la seua parella. Són una de les proves més importants de la investigació judicial. ","media":"","caption":"","links":"Els àudios de Whatsapp de Dori a una amiga, fonamentals per a aclarir el presumpte crim de la Zona Nord | https://www.aramultimedia.com/ca/els-audios-de-whatsapp-de-dori-a-una-amiga-fonamentals-per-a-aclarir-el-presumpte-crim-de-la-zona-nord\n"},{"id":1769626721905,"date":"14/11/2022","headline":"14 de novembre del 2022","text":"L’autor del crim deixa l’Hospital i ingressa en un modul hospitalari a Picassent, a espera de juí. ","media":"","caption":"","links":"El presumpte assassí de Dori deixa l'Hospital i ingressa en presó | https://www.aramultimedia.com/ca/el-presumpte-assassi-de-dori-deixa-lhospital-i-ingressa-en-preso"},{"id":1769626738040,"date":"23/11/2022","headline":"23 de novembre del 2022","text":"L’assassinat de Dori fa que més dones a Alcoi reclamen assistència. ACOVIFA, l’associació alcoiana que treballa en víctimes de violència de gènere, duplica les altencions. ","media":"","caption":"","links":"Les atencions a dones en ACOVIFA es dupliquen després de l'assassinat de Dori el passat mes d’octubre | https://www.aramultimedia.com/ca/les-atencions-a-dones-en-acovifa-es-dupliquen-despres-del-assassinat-de-dori-el-passat-mes-doctubre"},{"id":1769626752845,"date":"25/11/2022","headline":"25 de novembre del 2022","text":"El Dia contra la Violència de Gènere se celebra de manera emotiva a Alcoi. ","media":"","caption":"","links":"38 dones dins de sudaris al mig de la Plaça d’Espanya condemnen els assassinats en el Dia contra la Violència de Gènere | https://www.aramultimedia.com/ca/38-dones-dins-de-sudaris-al-mig-de-la-plaa-despanya-condemnen-els-assassinats-en-el-dia-contra-la-violncia-de-gnere"},{"id":1769626771694,"date":"8/3/2023","headline":"8 de març del 2023","text":"El mateix passa el Dia de la Dona, Alcoi pren el carrer de manera intensa. També assiteix el president de la Generalitat en eixe moment, Ximo Puig, per ser Alcoi la ciutat valenciana on s’ha registrat l’últim assassinat masclista, fa ja cinc mesos. ","media":"https://www.aramultimedia.com/upload/arxiu/images/2023-marc/8m/IMG_20230308_195916_164.jpg","caption":"","links":"Alcoi pren el carrer en el Dia de la Dona | https://www.aramultimedia.com/ca/alcoi-pren-el-carrer-en-el-dia-de-la-dona"},{"id":1769626785372,"date":"2023-2025","headline":"2023-2025: fase d’instrucció abans del juí. ","text":"","media":"","caption":"","links":""},{"id":1769626798075,"date":"13/1/2026","headline":"13 de gener del 2026","text":"Comença el jui a l’Audiència d’Alacant. La fiscalia demana entre 23 i 25 anys de presó. L’acusat s’acolleix al dret de no declarar i afirma que pateix amnesia. ","media":"","caption":"","links":"Comença el judici per l’assassinat a punyalades d’una jove a Alcoi en 2022 | https://www.aramultimedia.com/ca/comenca-el-judici-per-lassassinat-a-punyalades-duna-jove-a-alcoi-en-2022"},{"id":1769626809811,"date":"20/1/2026","headline":"20 de gener del 2026","text":"Acaba la celebració del juí i el Fiscal manté la petició de pena de 25 anys de presó. Comença la deliberació del jurat popular. ","media":"","caption":"","links":"Fiscalia reclama 25 anys de presó per al presumpte assassí de Dori | https://www.aramultimedia.com/ca/fiscalia-reclama-25-anys-de-preso-per-al-presumpte-assassi-de-dori"},{"id":1769626822258,"date":"21/1/2026","headline":"21 de gener del 2026","text":"El jurat popular considera culpable a l’autor de la mort de Dori. El juí queda vist per a sentència i quedem pendents de l’última decisió del jutge.","media":"https://www.aramultimedia.com/thumb.php?src=/upload/arxiu/images/2020-marc-abril/Alcoi/audiencia-provincial-alacant.png&w=800&zc=2&a=c","caption":"","links":"El jurat popular declara culpable l'acusat d'assassinar Dori a Alcoi el 2022 | https://www.aramultimedia.com/ca/el-jurat-popular-declara-culpable-lacusat-dassassinar-dori-a-alcoi-el-2022"}];
+    const MONTHS_ES = { enero: 0, gener: 0, jan: 0, february: 1, febrero: 1, febrer: 1, mar: 2, marzo: 2, març: 2, abr: 3, abril: 3, may: 4, mayo: 4, maig: 4, jun: 5, junio: 5, juny: 5, jul: 6, julio: 6, juliol: 6, ago: 7, agosto: 7, agost: 7, sep: 8, septiembre: 8, setembre: 8, oct: 9, octubre: 9, nov: 10, noviembre: 10, noviembre: 10, dic: 11, diciembre: 11, desembre: 11 };
+    const extractYear = (d) => { const m = d.match(/\d{4}/); return m ? parseInt(m[0]) : null; };
+    const calculatePosition = (dateStr) => {
+      if (!dateStr) return 50;
+      const lowerStr = dateStr.toString().trim().toLowerCase();
+      let dayOfYear = 180;
+      const dmyMatch = lowerStr.match(/^(\d{1,2})\s*[\/\-]\s*(\d{1,2})\s*[\/\-]\s*(\d{4})$/);
+      if (dmyMatch) {
+          const d = parseInt(dmyMatch[1]); const m = parseInt(dmyMatch[2]) - 1; const y = parseInt(dmyMatch[3]);
+          const dateObj = new Date(y, m, d);
+          if (!isNaN(dateObj.getTime())) {
+              const start = new Date(y, 0, 0);
+              const oneDay = 1000 * 60 * 60 * 24;
+              dayOfYear = Math.floor((dateObj - start) / oneDay);
+              return Math.min(Math.max((dayOfYear / 366) * 100, 0.5), 99.5);
+          }
+      }
+      let monthIndex = -1; let day = 15;
+      for (const [key, val] of Object.entries(MONTHS_ES)) { if (lowerStr.includes(key)) { monthIndex = val; break; } }
+      const dayMatch = lowerStr.match(/\b\d{1,2}\b/);
+      if (dayMatch) { const d = parseInt(dayMatch[0]); if (d > 0 && d <= 31) day = d; }
+      if (monthIndex !== -1) { dayOfYear = (monthIndex * 30.4) + day; }
+      else {
+        if (/^\d{4}$/.test(dateStr.trim())) return 50;
+        const parsedDate = new Date(dateStr);
+        if (!isNaN(parsedDate.getTime())) {
+           const start = new Date(parsedDate.getFullYear(), 0, 0);
+           dayOfYear = Math.floor((parsedDate - start) / (1000 * 60 * 60 * 24));
+        }
+      }
+      return Math.min(Math.max((dayOfYear / 365) * 100, 2), 98);
+    };
+    const eventsWithYear = rawEvents.map((e, i) => ({ ...e, originalIndex: i + 1, year: extractYear(e.date) }));
+    const validYears = eventsWithYear.filter(e => e.year !== null).map(e => e.year);
+    let minYear = validYears.length ? Math.min(...validYears) - 1 : new Date().getFullYear();
+    let maxYear = validYears.length ? Math.max(...validYears) : new Date().getFullYear();
+    minYear -= 0; maxYear += 2;
+    const rulerTrack = document.getElementById("rulerTrack");
+    for (let y = minYear; y <= maxYear; y++) {
+        const block = document.createElement("div");
+        block.className = "year-block";
+        if (y % 10 === 0) block.dataset.decade = "true";
+        block.innerHTML = "<div class=\"year-tick\"></div><div class=\"year-label\">" + y + "</div>";
+        const evsInYear = eventsWithYear.filter(e => e.year === y);
+        evsInYear.sort((a, b) => calculatePosition(a.date) - calculatePosition(b.date));
+        const heightPattern = [40, 25, 10];
+        evsInYear.forEach((ev, localIndex) => {
+            const container = document.createElement("div");
+            container.className = "event-stem-container";
+            container.id = "marker-" + ev.originalIndex;
+            container.style.left = calculatePosition(ev.date) + "%";
+            const stemHeight = heightPattern[localIndex % 3];
+            container.innerHTML = "<div class=\"event-tooltip\">" + ev.date + "</div><div class=\"event-stem-line\" style=\"height:" + stemHeight + "px\"></div><div class=\"event-marker\" style=\"bottom:" + stemHeight + "px\"></div>";
+            container.onclick = (e) => { e.stopPropagation(); goToSlide(ev.originalIndex); };
+            block.appendChild(container);
+        });
+        rulerTrack.appendChild(block);
+    }
+    const slider = document.getElementById("slider");
+    const btnPrev = document.getElementById("btnPrev");
+    const btnNext = document.getElementById("btnNext");
+    const navContainer = document.getElementById("navContainer");
+    let currentIndex = 0; const totalSlides = 16;
+    function goToSlide(index) {
+        if(index < 0 || index >= totalSlides) return;
+        currentIndex = index;
+        slider.style.transform = "translateX(-" + (currentIndex * 100) + "%)";
+        btnPrev.disabled = currentIndex === 0; btnNext.disabled = currentIndex === totalSlides - 1;
+        document.querySelectorAll(".event-stem-container").forEach(m => m.classList.remove("active"));
+        const activeMarker = document.getElementById("marker-" + currentIndex);
+        let targetMarker = activeMarker;
+        if (currentIndex === 0) targetMarker = document.getElementById("marker-1");
+        if(targetMarker) {
+            if (activeMarker) activeMarker.classList.add("active");
+            const containerCenter = navContainer.clientWidth / 2;
+            const markerRect = targetMarker.getBoundingClientRect();
+            const containerRect = navContainer.getBoundingClientRect(); 
+            const currentScroll = navContainer.scrollLeft;
+            const scrollTarget = currentScroll + (markerRect.left - containerRect.left - containerCenter + (markerRect.width/2));
+            navContainer.scrollTo({ left: scrollTarget, behavior: "smooth" });
+        }
+    }
+    btnPrev.addEventListener("click", () => goToSlide(currentIndex - 1));
+    btnNext.addEventListener("click", () => goToSlide(currentIndex + 1));
+    document.addEventListener("keydown", (e) => { if (e.key === "ArrowLeft") goToSlide(currentIndex - 1); if (e.key === "ArrowRight") goToSlide(currentIndex + 1); });
+    setTimeout(() => goToSlide(0), 200);
+</script>
+</body>
+</html>
